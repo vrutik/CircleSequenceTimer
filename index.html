@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Circle Timer Stack</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <!-- Babel for JSX transformation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- React app will mount here -->
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const SingleCircleTimerStack = () => {
+            // App state - all timer data and controls
+            const [timers, setTimers] = useState([]);
+            const [isRunning, setIsRunning] = useState(false);
+            const [timeRemaining, setTimeRemaining] = useState(0);
+            
+            // Form input state
+            const [timerName, setTimerName] = useState('');
+            const [timerMinutes, setTimerMinutes] = useState('');
+            const [timerColor, setTimerColor] = useState('#3B82F6');
+
+            // Calculate total time of all timers combined
+            const totalTime = timers.reduce((sum, timer) => sum + timer.duration, 0);
+
+            // Main countdown timer effect - runs every second when active
+            useEffect(() => {
+                let interval = null;
+                
+                if (isRunning && timeRemaining > 0) {
+                    interval = setInterval(() => {
+                        setTimeRemaining(time => time - 1);
+                    }, 1000);
+                } else if (timeRemaining === 0) {
+                    setIsRunning(false);
+                }
+
+                // Cleanup interval on unmount or dependency change
+                return () => clearInterval(interval);
+            }, [isRunning, timeRemaining]);
+
+            // Add a new timer to the stack
+            const addTimer = () => {
+                if (!timerName || !timerMinutes) return;
+                
+                const newTimer = {
+                    id: Date.now(), // Simple ID using timestamp
+                    name: timerName,
+                    duration: parseInt(timerMinutes) * 60, // Convert minutes to seconds
+                    color: timerColor
+                };
+                
+                setTimers([...timers, newTimer]);
+                // Clear form after adding
+                setTimerName('');
+                setTimerMinutes('');
+            };
+
+            // Remove a timer from the stack
+            const removeTimer = (id) => {
+                setTimers(timers.filter(timer => timer.id !== id));
+                reset(); // Reset timer when removing items
+            };
+
+            // Timer control functions
+            const start = () => {
+                if (timers.length === 0) return;
+                if (timeRemaining === 0) setTimeRemaining(totalTime); // Start fresh if needed
+                setIsRunning(true);
+            };
+
+            const pause = () => setIsRunning(false);
+            
+            const reset = () => {
+                setIsRunning(false);
+                setTimeRemaining(0);
+            };
+
+            // Helper function to format seconds into MM:SS format
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            };
+
+            // Calculate how to draw each timer segment in the circle
+            const getCircleSegments = () => {
+                if (totalTime === 0) return [];
+                
+                let remaining = timeRemaining;
+                const result = [];
+                let currentOffset = 0;
+                const radius = 100;
+                const circumference = 2 * Math.PI * radius;
+                
+                // Process timers from last to first (stack order: bottom depletes first)
+                for (let i = timers.length - 1; i >= 0; i--) {
+                    const timer = timers[i];
+                    // Calculate how much of the circle this timer should take up
+                    const segmentSize = (timer.duration / totalTime) * circumference;
+                    const timerRemaining = Math.min(remaining, timer.duration);
+                    const activeLength = (timerRemaining / timer.duration) * segmentSize;
+                    
+                    result.unshift({
+                        ...timer,
+                        remaining: timerRemaining,
+                        segmentSize: segmentSize,
+                        activeLength: activeLength,
+                        offset: currentOffset,
+                        percentage: (timerRemaining / timer.duration) * 100
+                    });
+                    
+                    currentOffset += segmentSize;
+                    remaining -= timerRemaining;
+                    if (remaining <= 0) remaining = 0;
+                }
+                
+                return result;
+            };
+
+            const segments = getCircleSegments();
+            const radius = 100;
+            const strokeWidth = 20;
+            const svgSize = (radius + strokeWidth) * 2;
+
+            return (
+                <div className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow-lg">
+                    {/* Header with time display */}
+                    <div className="text-center mb-6">
+                        <h1 className="text-3xl font-bold mb-2">Single Circle Timer</h1>
+                        <div className="text-4xl font-mono font-bold mb-2">
+                            {formatTime(timeRemaining)}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                            Total: {formatTime(totalTime)}
+                        </div>
+                    </div>
+
+                    {/* Main circle visualization */}
+                    <div className="flex justify-center mb-6">
+                        {timers.length === 0 ? (
+                            <div className="w-64 h-64 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                                Add timers to see the circle
+                            </div>
+                        ) : (
+                            <div className="relative">
+                                <svg width={svgSize} height={svgSize} className="transform -rotate-90">
+                                    {/* Background circle (gray) */}
+                                    <circle
+                                        cx={svgSize / 2}
+                                        cy={svgSize / 2}
+                                        r={radius}
+                                        fill="none"
+                                        stroke="#e5e7eb"
+                                        strokeWidth={strokeWidth}
+                                    />
+                                    
+                                    {/* Individual timer segments */}
+                                    {segments.map((segment) => (
+                                        <circle
+                                            key={segment.id}
+                                            cx={svgSize / 2}
+                                            cy={svgSize / 2}
+                                            r={radius}
+                                            fill="none"
+                                            stroke={segment.color}
+                                            strokeWidth={strokeWidth}
+                                            strokeLinecap="butt"
+                                            strokeDasharray={`${segment.activeLength} ${2 * Math.PI * radius - segment.activeLength}`}
+                                            strokeDashoffset={-segment.offset}
+                                            style={{
+                                                transition: 'stroke-dasharray 1s linear'
+                                            }}
+                                        />
+                                    ))}
+                                </svg>
+                                
+                                {/* Center display showing current time and percentage */}
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <div className="text-2xl font-mono font-bold">
+                                            {formatTime(timeRemaining)}
+                                        </div>
+                                        <div className="text-sm text-gray-600">
+                                            {Math.round((timeRemaining / totalTime) * 100) || 0}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Legend showing each timer segment */}
+                    {timers.length > 0 && (
+                        <div className="mb-6">
+                            <h3 className="font-medium mb-3 text-center">Timer Segments</h3>
+                            <div className="grid grid-cols-1 gap-2">
+                                {segments.map((segment) => (
+                                    <div key={segment.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                className="w-4 h-4 rounded-full"
+                                                style={{ backgroundColor: segment.color }}
+                                            />
+                                            <span className="font-medium">{segment.name}</span>
+                                        </div>
+                                        <div className="text-sm text-gray-600">
+                                            {formatTime(segment.remaining)} / {formatTime(segment.duration)}
+                                            <span className="ml-2 text-xs">
+                                                ({Math.round(segment.percentage)}%)
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Control buttons */}
+                    <div className="flex gap-2 mb-6">
+                        <button
+                            onClick={start}
+                            disabled={timers.length === 0}
+                            className="flex-1 bg-green-500 text-white py-2 px-4 rounded disabled:bg-gray-300"
+                        >
+                            Start
+                        </button>
+                        <button
+                            onClick={pause}
+                            className="flex-1 bg-yellow-500 text-white py-2 px-4 rounded"
+                        >
+                            Pause
+                        </button>
+                        <button
+                            onClick={reset}
+                            className="flex-1 bg-red-500 text-white py-2 px-4 rounded"
+                        >
+                            Reset
+                        </button>
+                    </div>
+
+                    {/* Form to add new timers */}
+                    <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                        <h3 className="font-medium mb-3">Add Timer</h3>
+                        <div className="space-y-2">
+                            <input
+                                type="text"
+                                placeholder="Timer name"
+                                value={timerName}
+                                onChange={(e) => setTimerName(e.target.value)}
+                                className="w-full p-2 border rounded"
+                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    placeholder="Minutes"
+                                    value={timerMinutes}
+                                    onChange={(e) => setTimerMinutes(e.target.value)}
+                                    className="flex-1 p-2 border rounded"
+                                />
+                                <input
+                                    type="color"
+                                    value={timerColor}
+                                    onChange={(e) => setTimerColor(e.target.value)}
+                                    className="w-12 h-10 border rounded cursor-pointer"
+                                />
+                            </div>
+                            <button
+                                onClick={addTimer}
+                                className="w-full bg-blue-500 text-white py-2 px-4 rounded"
+                            >
+                                Add Timer
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* List of all timers in the stack */}
+                    {timers.length > 0 && (
+                        <div>
+                            <h3 className="font-medium mb-2">Timer Stack</h3>
+                            {timers.map((timer, index) => (
+                                <div key={timer.id} className="flex justify-between items-center p-2 bg-gray-50 rounded mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500 w-4">#{index + 1}</span>
+                                        <div
+                                            className="w-4 h-4 rounded"
+                                            style={{ backgroundColor: timer.color }}
+                                        />
+                                        <span>{timer.name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm">{timer.duration / 60}m</span>
+                                        <button
+                                            onClick={() => removeTimer(timer.id)}
+                                            className="text-red-500 hover:text-red-700"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Mount the React app to the DOM
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SingleCircleTimerStack />);
+    </script>
+</body>
+</html>
