@@ -138,7 +138,7 @@
                 <div className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow-lg">
                     {/* Header with time display */}
                     <div className="text-center mb-6">
-                        <h1 className="text-3xl font-bold mb-2">Single Circle Timer</h1>
+                        <h1 className="text-3xl font-bold mb-2">Time Ring</h1>
                         <div className="text-4xl font-mono font-bold mb-2">
                             {formatTime(timeRemaining)}
                         </div>
@@ -151,7 +151,7 @@
                     <div className="flex justify-center mb-6">
                         {timers.length === 0 ? (
                             <div className="w-64 h-64 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
-                                Add timers to see the circle
+                                Add intervals below to build the ring
                             </div>
                         ) : (
                             <div className="relative">
@@ -204,7 +204,7 @@
                     {/* Legend showing each timer segment */}
                     {timers.length > 0 && (
                         <div className="mb-6">
-                            <h3 className="font-medium mb-3 text-center">Timer Segments</h3>
+                            <h3 className="font-medium mb-3 text-center">Time Intervals</h3>
                             <div className="grid grid-cols-1 gap-2">
                                 {segments.map((segment) => (
                                     <div key={segment.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
@@ -252,11 +252,11 @@
 
                     {/* Form to add new timers */}
                     <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                        <h3 className="font-medium mb-3">Add Timer</h3>
+                        <h3 className="font-medium mb-3">Add Intervals (choose name, interval and color)</h3>
                         <div className="space-y-2">
                             <input
                                 type="text"
-                                placeholder="Timer name"
+                                placeholder="Interval name"
                                 value={timerName}
                                 onChange={(e) => setTimerName(e.target.value)}
                                 className="w-full p-2 border rounded"
@@ -264,7 +264,7 @@
                             <div className="flex gap-2">
                                 <input
                                     type="number"
-                                    placeholder="Minutes"
+                                    placeholder="Interval length in minutes"
                                     value={timerMinutes}
                                     onChange={(e) => setTimerMinutes(e.target.value)}
                                     className="flex-1 p-2 border rounded"
@@ -280,7 +280,7 @@
                                 onClick={addTimer}
                                 className="w-full bg-blue-500 text-white py-2 px-4 rounded"
                             >
-                                Add Timer
+                                Add Interval to Time Ring
                             </button>
                         </div>
                     </div>
@@ -288,7 +288,7 @@
                     {/* List of all timers in the stack */}
                     {timers.length > 0 && (
                         <div>
-                            <h3 className="font-medium mb-2">Timer Stack</h3>
+                            <h3 className="font-medium mb-2">Intervals</h3>
                             {timers.map((timer, index) => (
                                 <div key={timer.id} className="flex justify-between items-center p-2 bg-gray-50 rounded mb-2">
                                     <div className="flex items-center gap-2">
